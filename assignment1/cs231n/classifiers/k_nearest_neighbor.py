@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import stats
 
 class KNearestNeighbor(object):
   """ a kNN classifier with L2 distance """
@@ -153,7 +154,7 @@ class KNearestNeighbor(object):
       # Store this label in y_pred[i]. Break ties by choosing the smaller     #
       # label.                                                                #
       #########################################################################
-      y_pred[i] = closest_y[0]
+      y_pred[i] = stats.mode(closest_y)[0]
       #########################################################################
       #                           END OF YOUR CODE                            #
       #########################################################################
