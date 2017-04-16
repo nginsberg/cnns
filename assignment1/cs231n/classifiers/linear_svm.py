@@ -59,27 +59,23 @@ def svm_loss_vectorized(W, X, y, reg):
   loss = 0.0
   dW = np.zeros(W.shape) # initialize the gradient as zero
 
+  num_train = X.shape[0]
+
   scores = X.dot(W) # Dot product
   correct_class_scores = scores[np.arange(scores.shape[0]), y] # Extract correct scores
   diff = (scores.T - correct_class_scores.T).T + 1 # Subtract correct scores, add buffer
-  diff = diff.clip(0) # Remove all negative scores, they don't count
+  diff[diff < 0] = 0 # Remove all negative scores, they don't count
+  diff[np.arange(diff.shape[0]), y] = 0 # Set the diffs of the correct images to 0
+
   loss = np.sum(diff) # Just sum all the values
-  loss /= X.shape[0] # Take the average across all images, not the sum
-  loss -= 1 # Since the score in every correct label was 1, not 0
+  loss /= num_train # Take the average across all images, not the sum
   loss += 0.5 * reg * np.sum(W*W) # Regularization factor
 
-  #############################################################################
-  # TODO:                                                                     #
-  # Implement a vectorized version of the gradient for the structured SVM     #
-  # loss, storing the result in dW.                                           #
-  #                                                                           #
-  # Hint: Instead of computing the gradient from scratch, it may be easier    #
-  # to reuse some of the intermediate values that you used to compute the     #
-  # loss.                                                                     #
-  #############################################################################
-  pass
-  #############################################################################
-  #                             END OF YOUR CODE                              #
-  #############################################################################
+  # Compute the scales for each class score for each image
+  flags = diff
+  flags[flags != 0] = 1
+  flags[np.arange(flags.shape[0]), y] = -1 * np.sum(flags, axis=1)
+  dW = flags.T.dot(X).T # Multiply the scales by the data
+  dW /= num_train # Compute the average, not the sum
 
   return loss, dW
