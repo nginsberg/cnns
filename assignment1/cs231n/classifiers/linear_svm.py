@@ -59,17 +59,14 @@ def svm_loss_vectorized(W, X, y, reg):
   loss = 0.0
   dW = np.zeros(W.shape) # initialize the gradient as zero
 
-  #############################################################################
-  # TODO:                                                                     #
-  # Implement a vectorized version of the structured SVM loss, storing the    #
-  # result in loss.                                                           #
-  #############################################################################
-  scores = X.dot(W)
-  correct_class_scores = scores[np.arange(scores.shape[0]), y]
-  #############################################################################
-  #                             END OF YOUR CODE                              #
-  #############################################################################
-
+  scores = X.dot(W) # Dot product
+  correct_class_scores = scores[np.arange(scores.shape[0]), y] # Extract correct scores
+  diff = (scores.T - correct_class_scores.T).T + 1 # Subtract correct scores, add buffer
+  diff = diff.clip(0) # Remove all negative scores, they don't count
+  loss = np.sum(diff) # Just sum all the values
+  loss /= X.shape[0] # Take the average across all images, not the sum
+  loss -= 1 # Since the score in every correct label was 1, not 0
+  loss += 0.5 * reg * np.sum(W*W) # Regularization factor
 
   #############################################################################
   # TODO:                                                                     #
