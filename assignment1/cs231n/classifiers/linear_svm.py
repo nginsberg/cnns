@@ -46,6 +46,7 @@ def svm_loss_naive(W, X, y, reg):
 
   # Add regularization to the loss.
   loss += 0.5 * reg * np.sum(W * W)
+  dW += reg * W
 
   return loss, dW
 
@@ -77,5 +78,6 @@ def svm_loss_vectorized(W, X, y, reg):
   flags[np.arange(flags.shape[0]), y] = -1 * np.sum(flags, axis=1)
   dW = flags.T.dot(X).T # Multiply the scales by the data
   dW /= num_train # Compute the average, not the sum
+  dW += reg * W
 
   return loss, dW
