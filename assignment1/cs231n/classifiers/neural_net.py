@@ -68,7 +68,6 @@ class TwoLayerNet(object):
     N, D = X.shape
 
     # Compute the forward pass
-    scores = None
     f = lambda X: X.clip(0)
     h = f(X.dot(W1) + b1)
     scores = h.dot(W2) + b2
@@ -78,7 +77,6 @@ class TwoLayerNet(object):
       return scores
 
     # Compute the loss
-    loss = None
     # This is exactly like the softmax classifier! I was able to copy this
     # section of code over :). Yay backprop.
     maxs = np.max(scores, axis=1, keepdims=True)
@@ -91,9 +89,6 @@ class TwoLayerNet(object):
     loss = np.sum(correct_scores)
     loss /= N
     loss += 0.5 * reg * (np.sum(W1*W1) + np.sum(W2*W2))
-    #############################################################################
-    #                              END OF YOUR CODE                             #
-    #############################################################################
 
     # Backward pass: compute gradients
     grads = {}
