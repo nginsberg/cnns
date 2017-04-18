@@ -69,30 +69,28 @@ class TwoLayerNet(object):
 
     # Compute the forward pass
     scores = None
-    #############################################################################
-    # TODO: Perform the forward pass, computing the class scores for the input. #
-    # Store the result in the scores variable, which should be an array of      #
-    # shape (N, C).                                                             #
-    #############################################################################
-    pass
-    #############################################################################
-    #                              END OF YOUR CODE                             #
-    #############################################################################
-    
+    f = lambda X: X.clip(0)
+    h = f(X.dot(W1) + b1)
+    scores = h.dot(W2) + b2
+
     # If the targets are not given then jump out, we're done
     if y is None:
       return scores
 
     # Compute the loss
     loss = None
-    #############################################################################
-    # TODO: Finish the forward pass, and compute the loss. This should include  #
-    # both the data loss and L2 regularization for W1 and W2. Store the result  #
-    # in the variable loss, which should be a scalar. Use the Softmax           #
-    # classifier loss. So that your results match ours, multiply the            #
-    # regularization loss by 0.5                                                #
-    #############################################################################
-    pass
+    # This is exactly like the softmax classifier! I was able to copy this
+    # section of code over :). Yay backprop.
+    maxs = np.max(scores, axis=1, keepdims=True)
+    scores -= maxs
+    exp_scores = np.exp(scores)
+    exp_sums = np.sum(exp_scores, axis=1, keepdims=True)
+    normalized = exp_scores/exp_sums
+
+    correct_scores = -np.log(normalized[np.arange(normalized.shape[0]), y])
+    loss = np.sum(correct_scores)
+    loss /= N
+    loss += 0.5 * reg * (np.sum(W1*W1) + np.sum(W2*W2))
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
