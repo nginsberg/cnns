@@ -97,7 +97,14 @@ class TwoLayerNet(object):
     # and biases. Store the results in the grads dictionary. For example,       #
     # grads['W1'] should store the gradient on W1, and be a matrix of same size #
     #############################################################################
-    pass
+    scoresGrad = normalized
+    scoresGrad[np.arange(scoresGrad.shape[0]), y] -= 1
+    grads['b2'] = np.mean(scoresGrad, axis=0)
+    grads['W2'] = h.T.dot(scoresGrad) + reg * W2
+    dh = scoresGrad.dot(W2.T)
+    dh[h == 0] = 0
+    grads['b1'] = np.mean(dh, axis=0)
+    grads['W1'] = X.T.dot(dh) + reg * W1
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
