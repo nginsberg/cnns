@@ -5,3 +5,5 @@
  assignment1/cs231n/datasets/cifar-10-batches-py
 
 assignment1/\.ipynb_checkpoints/
+
+\.DS_Store
