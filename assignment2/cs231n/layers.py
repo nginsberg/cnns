@@ -20,8 +20,8 @@ def affine_forward(x, w, b):
   - cache: (x, w, b)
   """
 
-  x = x.reshape(x.shape[0], np.prod(x.shape[1:]))
-  out = x.dot(w)+b
+  reshape_x = x.reshape(x.shape[0], np.prod(x.shape[1:]))
+  out = reshape_x.dot(w)+b
   cache = (x, w, b)
   return out, cache
 
@@ -42,14 +42,13 @@ def affine_backward(dout, cache):
   - db: Gradient with respect to b, of shape (M,)
   """
   x, w, b = cache
-  dx, dw, db = None, None, None
-  #############################################################################
-  # TODO: Implement the affine backward pass.                                 #
-  #############################################################################
-  pass
-  #############################################################################
-  #                             END OF YOUR CODE                              #
-  #############################################################################
+  reshape_x = x.reshape(x.shape[0], np.prod(x.shape[1:]))
+
+  dx = dout.dot(w.T)
+  dx = dx.reshape(x.shape)
+  dw = reshape_x.T.dot(dout)
+  db = np.sum(dout, axis=0)
+
   return dx, dw, db
 
 
@@ -64,14 +63,7 @@ def relu_forward(x):
   - out: Output, of the same shape as x
   - cache: x
   """
-  out = None
-  #############################################################################
-  # TODO: Implement the ReLU forward pass.                                    #
-  #############################################################################
-  pass
-  #############################################################################
-  #                             END OF YOUR CODE                              #
-  #############################################################################
+  out = x.clip(0)
   cache = x
   return out, cache
 
@@ -91,7 +83,8 @@ def relu_backward(dout, cache):
   #############################################################################
   # TODO: Implement the ReLU backward pass.                                   #
   #############################################################################
-  pass
+  dx = dout
+  dx[x < 0] = 0
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
