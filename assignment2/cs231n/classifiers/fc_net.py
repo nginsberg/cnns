@@ -146,7 +146,20 @@ class FullyConnectedNet(object):
     # beta2, etc. Scale parameters should be initialized to one and shift      #
     # parameters should be initialized to zero.                                #
     ############################################################################
-    pass
+    for i, H in enumerate(hidden_dims):
+      w = 'W' + str(i+1)
+      b = 'b' + str(i+1)
+      if i is 0:
+        self.params[w] = np.random.normal(scale=weight_scale, size=(input_dim, H))
+      else:
+        self.params[w] = np.random.normal(scale=weight_scale, size=(hidden_dims[i-1], H))
+      self.params[b] = np.zeros(H)
+
+    w = 'W' + str(len(hidden_dims)+1)
+    b = 'b' + str(len(hidden_dims)+1)
+    self.params[w] = np.random.normal(scale=weight_scale, size=(hidden_dims[-1], num_classes))
+    self.params[b] = np.zeros(num_classes)
+
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -204,7 +217,24 @@ class FullyConnectedNet(object):
     # self.bn_params[1] to the forward pass for the second batch normalization #
     # layer, etc.                                                              #
     ############################################################################
-    pass
+    affine_outs = []
+    relu_outs = []
+    affine_caches = []
+    relu_caches = []
+    for i in xrange(self.num_layers):
+      w = self.params['W' + str(i+1)]
+      b = self.params['b' + str(i+1)]
+      if i is 0:
+        out, cache = affine_forward(X, w, b)
+      else:
+        out, cache = affine_forward(relu_outs[i-1], w, b)
+      affine_outs.append(out)
+      affine_caches.append(cache)
+      if i is not self.num_layers - 1:
+        out, cache = relu_forward(affine_outs[i])
+        relu_outs.append(out)
+        relu_caches.append(cache)
+
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
