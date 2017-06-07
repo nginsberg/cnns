@@ -264,22 +264,11 @@ def dropout_forward(x, dropout_param):
   out = None
 
   if mode == 'train':
-    ###########################################################################
-    # TODO: Implement the training phase forward pass for inverted dropout.   #
-    # Store the dropout mask in the mask variable.                            #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                            END OF YOUR CODE                             #
-    ###########################################################################
+    mask = np.random.choice(2, x.shape, p=[p, 1-p])
+    out = np.copy(x)
+    out[mask == 0] = 0
   elif mode == 'test':
-    ###########################################################################
-    # TODO: Implement the test phase forward pass for inverted dropout.       #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                            END OF YOUR CODE                             #
-    ###########################################################################
+    out = (1-p) * np.copy(x)
 
   cache = (dropout_param, mask)
   out = out.astype(x.dtype, copy=False)
@@ -303,12 +292,13 @@ def dropout_backward(dout, cache):
     ###########################################################################
     # TODO: Implement the training phase backward pass for inverted dropout.  #
     ###########################################################################
-    pass
+    dx = np.copy(dout)
+    dx[mask == 0] = 0
     ###########################################################################
     #                            END OF YOUR CODE                             #
     ###########################################################################
   elif mode == 'test':
-    dx = dout
+    dx = (1-dropout_param) * dout # Not sure if this is right, but is never used.
   return dx
 
 
