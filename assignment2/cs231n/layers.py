@@ -272,6 +272,52 @@ def batchnorm_backward_alt(dout, cache):
   return batchnorm_backward(dout, cache)
 
 
+def splitout_forward(x, dropout_param):
+  """
+  Performs the forward pass for splitout.
+
+  Inputs:
+  - x: Input data, of any shape
+  - dropout_param: A dictionary with the following keys:
+    - mode: 'test' or 'train'. If the mode is train, then perform splitout;
+      if the mode is test, then just return the input.
+    - seed: Seed for the random number generator. Passing seed makes this
+      function deterministic, which is needed for gradient checking but not in
+      real networks.
+
+  Outputs:
+  - out_zero: Array of the same shape as x, masked by 0
+  - out_one: Array of the same shape as x, masked by 1
+  - cache: A tuple (dropout_param, mask). In training mode, mask is the dropout
+    mask that was used to multiply the input; in test mode, mask is None.
+  """
+
+  mode = dropout_param['mode']
+  # If this isn't 0.5, I can't figure out how to normalize output for train
+  p = 0.5
+  if 'seed' in dropout_param:
+    np.random.seed(dropout_param['seed'])
+
+  mask = None
+  out_zero = None
+  out_one = None
+
+  if mode == 'train':
+    mask = np.random.choice(2, x.shape, p=[p, 1-p])
+    out_zero = np.copy(x)
+    out_one = np.copy(x)
+    out_zero[mask == 0] = 0
+    out_one[mask == 1] = 0
+  elif mode == 'test':
+    out_zero = p * np.copy(x)
+    out_one = p * np.copy(x)
+
+  cache = (mask, mode)
+  out_zero = out_zero.astype(x.dtype, copy=False)
+  out_one = out_one.astype(x.dtype, copy=False)
+
+  return out_zero, out_one, cache
+
 def dropout_forward(x, dropout_param):
   """
   Performs the forward pass for (inverted) dropout.
@@ -324,18 +370,33 @@ def dropout_backward(dout, cache):
 
   dx = None
   if mode == 'train':
-    ###########################################################################
-    # TODO: Implement the training phase backward pass for inverted dropout.  #
-    ###########################################################################
     dx = np.copy(dout)
     dx[mask == 0] = 0
-    ###########################################################################
-    #                            END OF YOUR CODE                             #
-    ###########################################################################
-  elif mode == 'test':
-    dx = (1-dropout_param) * dout # Not sure if this is right, but is never used.
   return dx
 
+def splitout_backward(dout_zero, dout_one, cache):
+  """
+  Perform the backward pass for splitout.
+
+  Inputs:
+  - dout_zero: Upstream derivative masked by zero during fwd splitout
+  - dout_one: Upstream derivateive masked by one during fwd splitout
+
+  dout_zero and dout_one must be the same shape
+  """
+
+  mask, mode = cache
+
+  dx_zero = None
+  dx_one = None
+  dx = None
+  if mode == 'train':
+    dx_zero = np.copy(dout_zero)
+    dx_zero[mask == 0] = 0
+    dx_one = np.copy(dout_one)
+    dx_one[mask == 1] = 0
+    dx = dx_zero + dx_one
+  return dx
 
 def conv_forward_naive(x, w, b, conv_param):
   """

@@ -105,7 +105,7 @@ class FullyConnectedNet(object):
   """
 
   def __init__(self, hidden_dims, input_dim=3*32*32, num_classes=10,
-               dropout=0, use_batchnorm=False, reg=0.0,
+               dropout=0, use_splitout=False, use_batchnorm=False, reg=0.0,
                weight_scale=1e-2, dtype=np.float32, seed=None):
     """
     Initialize a new FullyConnectedNet.
@@ -128,6 +128,7 @@ class FullyConnectedNet(object):
       model.
     """
     self.use_batchnorm = use_batchnorm
+    self.use_splitout = use_splitout
     self.use_dropout = dropout > 0
     self.reg = reg
     self.num_layers = 1 + len(hidden_dims)
@@ -217,24 +218,38 @@ class FullyConnectedNet(object):
     self.relu_cache = {}
     self.dropout_cache = {}
     scores = X
+    # Placeholders for if we use splitout
+    scores_zero = X
+    scores_one = X
 
     for i in xrange(1, self.num_layers+1):
       W_name = 'W' + str(i)
       b_name = 'b' + str(i)
       cache_name = 'c' + str(i)
 
-      scores, self.affine_cache[cache_name] = affine_forward(scores,
-        self.params[W_name], self.params[b_name])
+      if self.use_splitout and i is self.num_layers:
+        scores_zero, self.affine_cache[cache_name + '_zero'] = affine_forward(scores_zero, self.params[W_name], self.params[b_name])
+        scores_one, self.affine_cache[cache_name + '_one'] = affine_forward(scores_one, self.params[W_name], self.params[b_name])
+      else:
+        scores, self.affine_cache[cache_name] = affine_forward(scores,
+          self.params[W_name], self.params[b_name])
+
       if i is not self.num_layers:
         scores, self.relu_cache[cache_name] = relu_forward(scores)
-        if self.use_dropout: scores, self.dropout_cache[cache_name] = dropout_forward(scores, self.dropout_param)
+        if self.use_splitout and i+1 is self.num_layers:
+          scores_zero, scores_one, self.dropout_cache[cache_name] = splitout_forward(scores, self.dropout_param)
+        elif self.use_dropout:
+          scores, self.dropout_cache[cache_name] = dropout_forward(scores, self.dropout_param)
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
 
     # If test mode return early
     if mode == 'test':
-      return scores
+      if self.use_splitout:
+        return (scores_zero + scores_one) / 2.
+      else:
+        return scores
 
     loss, grads = 0.0, {}
     ############################################################################
@@ -250,7 +265,19 @@ class FullyConnectedNet(object):
     # automated tests, make sure that your L2 regularization includes a factor #
     # of 0.5 to simplify the expression for the gradient.                      #
     ############################################################################
-    loss, d = softmax_loss(scores, y)
+    loss = None
+    loss_zero = None
+    loss_one = None
+    d = None
+    d_zero = None
+    d_one = None
+
+    if self.use_splitout:
+      loss_zero, d_zero = softmax_loss(scores_zero, y)
+      loss_one, d_one = softmax_loss(scores_one, y)
+      loss = (loss_zero + loss_one) / 2.
+    else:
+      loss, d = softmax_loss(scores, y)
 
     for i in xrange(self.num_layers, 0, -1):
       W_name = 'W' + str(i)
@@ -260,10 +287,18 @@ class FullyConnectedNet(object):
       loss += 0.5 * self.reg * np.sum(self.params[W_name] ** 2)
 
       if i is not self.num_layers:
-        if self.use_dropout: d = dropout_backward(d, self.dropout_cache[cache_name])
+        if i+1 is self.num_layers and self.use_splitout:
+          d = splitout_backward(d_zero, d_one, self.dropout_cache[cache_name])
+        elif self.use_dropout: d = dropout_backward(d, self.dropout_cache[cache_name])
         d = relu_backward(d, self.relu_cache[cache_name])
 
-      d, grads[W_name], grads[b_name] = affine_backward(d, self.affine_cache[cache_name])
+      if i is self.num_layers and self.use_splitout:
+        d_zero, dW_zero, db_zero = affine_backward(d_zero, self.affine_cache[cache_name + '_zero'])
+        d_one, dW_one, db_one = affine_backward(d_one, self.affine_cache[cache_name + '_one'])
+        grads[W_name] = (dW_zero + dW_one) / 2.
+        grads[b_name] = (db_zero + db_one) / 2.
+      else:
+        d, grads[W_name], grads[b_name] = affine_backward(d, self.affine_cache[cache_name])
       grads[W_name] += self.reg * self.params[W_name]
 
     ############################################################################
