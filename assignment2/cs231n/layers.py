@@ -152,7 +152,21 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     # the momentum variable to update the running mean and running variance,    #
     # storing your result in the running_mean and running_var variables.        #
     #############################################################################
-    pass
+    mu = 1.0/N * np.sum(x, axis=0)
+    x_mu = x - mu
+    x_mu_sqr = x_mu**2
+    var = 1.0/N * np.sum(x_mu_sqr, axis=0)
+    sqrt_var = np.sqrt(var + eps)
+    invert_var = 1.0/sqrt_var
+    x_norm = x_mu * invert_var
+    scale_norm = gamma * x_norm
+    out = scale_norm + beta
+
+    running_mean = momentum * running_mean + (1. - momentum) * mu
+    running_var = momentum * running_var + (1. - momentum) * var
+
+    cache = (mu, x_mu, x_mu_sqr, var, sqrt_var, invert_var, x_norm, scale_norm,
+      gamma, beta, x, bn_param)
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -163,7 +177,11 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     # and shift the normalized data using gamma and beta. Store the result in   #
     # the out variable.                                                         #
     #############################################################################
-    pass
+    mu = running_mean
+    var = running_var
+    x_norm = (x - mu) / np.sqrt(var + eps)
+    out = gamma * x_norm + beta
+    cache = (mu, var, gamma, beta, bn_param)
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -199,7 +217,24 @@ def batchnorm_backward(dout, cache):
   # TODO: Implement the backward pass for batch normalization. Store the      #
   # results in the dx, dgamma, and dbeta variables.                           #
   #############################################################################
-  pass
+  mu, x_mu, x_mu_sqr, var, sqrt_var, invert_var, x_norm, scale_norm, gamma, \
+    beta, x, bn_param = cache
+  eps = bn_param.get('eps', 1e-5)
+  N, D = dout.shape
+
+  dscale_norm = dout
+  dbeta = np.sum(dout, axis=0)
+  dx_norm = gamma * dscale_norm
+  dgamma = np.sum(x_norm * dscale_norm, axis=0)
+  dx_mu = invert_var * dx_norm
+  dinvert_var = np.sum(x_mu * dx_norm, axis=0)
+  dsqrt_var = -1.0/(sqrt_var**2) * dinvert_var
+  dvar = 0.5 * (var+eps)**(-0.5) * dsqrt_var
+  dx_mu_sqr = 1.0/N * np.ones(x_mu_sqr.shape) * dvar
+  dx_mu += 2 * x_mu * dx_mu_sqr
+  dx = dx_mu
+  dmu = -np.sum(dx_mu, axis=0)
+  dx += 1.0/N * np.ones(dx_mu.shape) * dmu
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
@@ -234,7 +269,7 @@ def batchnorm_backward_alt(dout, cache):
   #                             END OF YOUR CODE                              #
   #############################################################################
 
-  return dx, dgamma, dbeta
+  return batchnorm_backward(dout, cache)
 
 
 def dropout_forward(x, dropout_param):
