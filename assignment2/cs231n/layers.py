@@ -324,14 +324,7 @@ def dropout_backward(dout, cache):
 
   dx = None
   if mode == 'train':
-    ###########################################################################
-    # TODO: Implement the training phase backward pass for inverted dropout.  #
-    ###########################################################################
     dx = np.copy(dout)
-    dx[mask == 0] = 0
-    ###########################################################################
-    #                            END OF YOUR CODE                             #
-    ###########################################################################
   elif mode == 'test':
     dx = (1-dropout_param) * dout # Not sure if this is right, but is never used.
   return dx
@@ -361,14 +354,26 @@ def conv_forward_naive(x, w, b, conv_param):
   - cache: (x, w, b, conv_param)
   """
   out = None
-  #############################################################################
-  # TODO: Implement the convolutional forward pass.                           #
-  # Hint: you can use the function np.pad for padding.                        #
-  #############################################################################
-  pass
-  #############################################################################
-  #                             END OF YOUR CODE                              #
-  #############################################################################
+  N, C, H, W = x.shape
+  F, C, HH, WW = w.shape
+  S = conv_param['stride']
+  P = conv_param['pad']
+
+  # First we pad the input
+  x_padded = np.pad(x, ((0,), (0,), (P,), (P,)), 'constant')
+
+  # Since this doesn't have to be fast, we just initialize the output to zeros,
+  # then iterate over it and compute each square individually.
+  H_prime = 1 + (H + 2 * P - HH) / S
+  W_prime = 1 + (W + 2 * P - WW) / S
+  out = np.zeros((N, F, H_prime, W_prime))
+
+  for n in xrange(N):
+    for f in xrange(F):
+      for hp in xrange(H_prime):
+        for wp in xrange(W_prime):
+          out[n, f, hp, wp] = np.sum(
+            x_padded[n, :, hp*S:hp*S+HH, wp*S:wp*S+WW] * w[f, :]) + b[f] 
   cache = (x, w, b, conv_param)
   return out, cache
 
@@ -390,7 +395,47 @@ def conv_backward_naive(dout, cache):
   #############################################################################
   # TODO: Implement the convolutional backward pass.                          #
   #############################################################################
-  pass
+  # Get values needed as in forward pass
+  x, w, b, conv_param = cache
+
+
+  P = conv_param['pad']
+  S = conv_param['stride']
+  x_padded = np.pad(x, ((0,), (0,), (P,), (P,)), 'constant')
+  N, C, H, W = x.shape
+  F, C, HH, WW = w.shape
+  N, F, H_prime, W_prime = dout.shape
+
+  # db
+  db = np.zeros((F))
+  for f in xrange(F):
+    db[f] = np.sum(dout[:, f, :, :])
+
+  # dw
+  dw = np.zeros((F, C, HH, WW))
+  for f in xrange(F):
+    for c in xrange(C):
+      for hp in xrange(HH):
+        for wp in xrange(WW):
+          x_padded_part = x_padded[:, c, hp*S:hp*S + H_prime, wp*S:wp*S + W_prime]
+          dw[f, c, hp, wp] = np.sum(dout[:, f, :, :] * x_padded_part)
+
+  # dx
+  # We do this computation through x, since that's what the kernels use
+  dx = np.zeros((N, C, H, W))
+  for n in xrange(N):
+    for idh in xrange(H):
+      for idw in xrange(W):
+        for f in xrange(F):
+          for hp in xrange(H_prime):
+            for wp in xrange(W_prime):
+              # Figure out what entries in w actually used this square of x
+              mask = np.zeros_like(w[f, :, :, :])
+              if (idh + P - hp * S) < HH and (idh + P - hp * S) >= 0:
+                if (idw + P - wp * S) < WW and (idw + P - wp * S) >= 0:
+                  mask[:, idh + P - hp * S, idw + P - wp * S] = 1
+              masked_w = np.sum(w[f, :, :, :] * mask, axis=(1,2))
+              dx[n, :, idh, idw] += dout[n, f, hp, wp] * masked_w
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
