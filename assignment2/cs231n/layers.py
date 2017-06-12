@@ -457,14 +457,22 @@ def max_pool_forward_naive(x, pool_param):
   - out: Output data
   - cache: (x, pool_param)
   """
-  out = None
-  #############################################################################
-  # TODO: Implement the max pooling forward pass                              #
-  #############################################################################
-  pass
-  #############################################################################
-  #                             END OF YOUR CODE                              #
-  #############################################################################
+  N, C, H, W = x.shape
+
+  ph = pool_param['pool_height']
+  pw = pool_param['pool_width']
+  S = pool_param['stride']
+  
+  H_prime = (H - ph) / S + 1
+  W_prime = (W - pw) / S + 1
+  out = np.zeros((N, C, H_prime, W_prime))
+
+  for n in xrange(N):
+    for c in xrange(C):
+      for h in xrange(H_prime):
+        for w in xrange(W_prime):
+          out[n, c, h, w] = np.max(x[n, c, h*S:h*S+ph, w*S:w*S+pw])
+
   cache = (x, pool_param)
   return out, cache
 
@@ -481,13 +489,33 @@ def max_pool_backward_naive(dout, cache):
   - dx: Gradient with respect to x
   """
   dx = None
-  #############################################################################
-  # TODO: Implement the max pooling backward pass                             #
-  #############################################################################
-  pass
-  #############################################################################
-  #                             END OF YOUR CODE                              #
-  #############################################################################
+
+  x, pool_param = cache
+  S = pool_param['stride']
+  ph = pool_param['pool_height']
+  pw = pool_param['pool_width']
+  N, C, H, W = x.shape
+
+  H_prime = (H - ph) / S + 1
+  W_prime = (W - pw) / S + 1
+
+  # Shape of dout should be N, C, H_prime, W_prime
+  
+  dx = np.zeros((N, C, H, W))
+  for n in xrange(N):
+    for c in xrange(C):
+      for h in xrange(H_prime):
+        for w in xrange(W_prime):
+          # Find the section of x that contributed
+          contributed = x[n, c, h*S:h*S+ph, w*S:w*S+pw]
+          # Max of section
+          m = np.max(contributed)
+          # We set every element that isn't the max to 0
+          mask = contributed == m
+          # Add to the derivative - note that different parts of x can
+          # effect multiple squares of dx, so derivative may not be sparse
+          dx[n, c, h*S:h*S+ph, w*S:w*S+pw] += dout[n, c, h, w] * mask
+
   return dx
 
 
